@@ -240,7 +240,7 @@ Pos searchWordInMatrix(String text, Pos previousPos) {
 	  // If the word was found in the current row and is in a subsequent row
 	  // or is in the same row as the previous one but in a subsequent column,
 	  // then return the current word and set the corresponding LEDs as HIGH
-      if((index != -1) && ((i > startRow) || ((i == startRow) && (index >= startCol)))){
+      if((index >= 0) && ((i > startRow) || ((i == startRow) && (index >= startCol)))){
           p.row = i;
           p.col = index;
           p.length = text.length();
@@ -535,3 +535,4 @@ void loop() {
   refreshMatrix();
 
 }
+
