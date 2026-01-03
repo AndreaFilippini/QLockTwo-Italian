@@ -231,6 +231,11 @@ Pos searchWordInMatrix(String text, Pos previousPos) {
   // Iterate across all matrix rows to find the target word
   for(int i = 0; i < matrixRows; i++){
       int index = String(matrixWords[i]).indexOf(text);
+
+	  // special case of È char (2 byte encoding), in this case shift the position of the index by 1
+	  if((i == 1) && (index != 0)){
+        index--;
+      }
 	  
 	  // If the word was found in the current row and is in a subsequent row
 	  // or is in the same row as the previous one but in a subsequent column,
@@ -239,6 +244,12 @@ Pos searchWordInMatrix(String text, Pos previousPos) {
           p.row = i;
           p.col = index;
           p.length = text.length();
+
+		  // special case of È char (2 byte encoding), in this set the length with a char less
+		  if((i == 1) && (index == 0)){
+            p.length = text.length() - 1;
+          }
+		  
           setWordInLedMatrix(p, text);
           return p;
       }
@@ -280,7 +291,7 @@ void setupLedMatrix() {
 void setWordInLedMatrix(Pos p, String word) {
   int row = p.row;
   int col = p.col;
-  for (int i = 0; i < word.length(); i++) {
+  for (int i = 0; i < p.length; i++) {
     matrixLeds[row][col + i] = HIGH;
   }
 }
@@ -522,4 +533,5 @@ void loop() {
 
   // Turn on the LEDs with HIGH status with multiplexing
   refreshMatrix();
+
 }
