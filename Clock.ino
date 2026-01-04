@@ -4,7 +4,7 @@
 
 /*
 
-  QlockTwo v.1.0
+  QlockTwo v.1.1
    ____  _            _    _                 
   / __ \| |          | |  | |                
  | |  | | | ___   ___| | _| |___      _____  
@@ -98,7 +98,7 @@ const int registers[registerNum][registerPins] = {
 };
 
 // Pin used to control the LEDs to indicate the intermediate times between one time and the next
-const int minutesLedsLeft[minutesLeftNum] = {1, 2, 3, 4};
+const int minutesLedsLeft[minutesLeftNum] = {14, 15, 16, 17};
 
 // Indexes and arrays to identify and store used and unused rows, in order to alternate between turning on used/unused rows
 // and avoid the problem of ghosting during multiplexing for adjacent rows
@@ -116,7 +116,7 @@ char matrixLeds[matrixRows][matrixCols];
 // Definition of global variables that will be used during code execution, including hours and minutes,
 // output to be sent to shift registers and the current time in words to be displayed on the matrix
 String currentTime;
-int hours, minutes, minutesLeft, prevHours, prevMinutes, totalWords, activeRow;
+int hours, minutes, prevHours, prevMinutes, totalWords, activeRow;
 bool error = false;
 uint32_t outputPinsValue;
 byte singleRegisterValue;
@@ -160,21 +160,26 @@ String convertTimeToString(int hours, int minutes) {
 
   // Special case of the quarter hour, with an additional prefix ("UN" before QUARTO at 15 or 45)
   if (((minutes >= 15) && (minutes <= 19)) ||
-      ((minutes >= 45) && (minutes <= 49))) {
+      ((minutes >= 40) && (minutes <= 44))) {
     out += prefixForFifteen;
   }
 
   // Get the word corresponding to the current minutes based on whether we are before or after the half hour
-  int idx;
+  int index;
   if (minutes <= 34) {
-    idx = (minutes % 30) / 5;
+    index = (minutes % 30) / 5;
   } else {
     int temp = minutes - 35;
-    idx = 5 - ((temp % 30) / 5);
+    index = 5 - ((temp % 30) / 5);
+
+    // if it is an intermediate time, get the previous interval and then show remaining minutes with the LEDs
+    if((minutes <= 55) && ((temp % 5) != 0)){
+      index--;
+    }
   }
 
   // Add minutes to the current string 
-  out += minutesWords[idx];
+  out += minutesWords[index];
 
   return out;
 }
@@ -199,14 +204,14 @@ int splitWords(String text, String result[]) {
 
   // iterate until no other words are found
   while (true) {
-	// Get the next space index char and if exists,
-	// extrat the current word as substring and put into the string array result
+	  // Get the next space index char and if exists,
+	  // extrat the current word as substring and put into the string array result
     int spaceIndex = text.indexOf(' ', start);
     if (spaceIndex == -1) {
       result[count++] = text.substring(start);
       break;
     }
-	// extract the word from the past start index and the next space char
+	  // extract the word from the past start index and the next space char
     result[count++] = text.substring(start, spaceIndex);
     start = spaceIndex + 1;
     if (count >= maxWordsChars) break;
@@ -232,22 +237,22 @@ Pos searchWordInMatrix(String text, Pos previousPos) {
   for(int i = 0; i < matrixRows; i++){
       int index = String(matrixWords[i]).indexOf(text);
 
-	  // special case of È char (2 byte encoding), in this case shift the position of the index by 1
-	  if((i == 1) && (index != 0)){
+	    // special case of È char (2 byte encoding), in this case shift the position of the index by 1
+	    if((i == 1) && (index != 0)){
         index--;
       }
 	  
-	  // If the word was found in the current row and is in a subsequent row
-	  // or is in the same row as the previous one but in a subsequent column,
-	  // then return the current word and set the corresponding LEDs as HIGH
+	    // If the word was found in the current row and is in a subsequent row
+	    // or is in the same row as the previous one but in a subsequent column,
+	    // then return the current word and set the corresponding LEDs as HIGH
       if((index >= 0) && ((i > startRow) || ((i == startRow) && (index >= startCol)))){
           p.row = i;
           p.col = index;
           p.length = text.length();
 
-		  // special case of È char (2 byte encoding), in this set the length with a char less
-		  if((i == 1) && (index == 0)){
-            p.length = text.length() - 1;
+		      // special case of È char (2 byte encoding), in this set the length with a char less
+		      if((i == 1) && (index == 0)){
+            p.length--;
           }
 		  
           setWordInLedMatrix(p, text);
@@ -394,20 +399,20 @@ void refreshMatrix() {
   // Turn the second LSB of the row to 1, so 0b[---][0000000001][00000000000] and then
   // turn the first LSB of the coloumns to 1, so 0b[---][0000000001][00000000010]
   // finally, negate the coloumns bits to get the final value, like 0b[---][0000000001][11111111101]
-  
+
   // Itera on all rows used in rowMapping
   for(int row = (usedRowIndex << 1); row >= 0; row--){
     // Get the corresponding row based on the mapping created previously
     activeRow = rowMapping[row];
-	
-	// Set the current output value to default value
+
+	  // Set the current output value to default value
     outputPinsValue = 0;
 
-	// Iterate over each column of the current row to construct the value to be sent to the shift registers
+	  // Iterate over each column of the current row to construct the value to be sent to the shift registers
     for(int col = 0; col < matrixCols; col++){
 	
-	  // If the LED at the intersection of the current row and column is on,
-	  // then set the corresponding bit in the output value to 1
+	    // If the LED at the intersection of the current row and column is on,
+	    // then set the corresponding bit in the output value to 1
       if(matrixLeds[activeRow][col] == HIGH){
 	    // The first [11 bits] least significant bits drive the columns, while the most significant [10 bits] drive the rows
         outputPinsValue |= (1UL << (matrixCols + activeRow)) | (1UL << col);
@@ -427,8 +432,7 @@ void refreshMatrix() {
 void testMatrix(){
   for(int row = 0; row < matrixRows; row++){
     for(int col = 0; col < matrixCols; col++){
-      outputPinsValue = 0;
-      outputPinsValue |= (1UL << (matrixCols + row)) | (1UL << col);
+      outputPinsValue = (1UL << (matrixCols + row)) | (1UL << col);
       outputPinsValue = ((outputPinsValue >> matrixCols) << matrixCols) | (matrixColsMask & ~outputPinsValue);
 
       setRegistersOutput(outputPinsValue);
@@ -440,7 +444,21 @@ void testMatrix(){
 // --------------------------------------------------------------
 // Function to turn on LEDs that indicate intermediate minutes
 // --------------------------------------------------------------
-void refreshMinutesLeds(int minutesLeft){
+void refreshMinutesLeds(int minutesLeft, int minutes){
+  // Don't turn on any LEDs in the last 5 minutes
+  if(minutes > 55){
+    minutesLeft = 0;
+  }else if(minutes > 34){
+    // If it is after half an hour and there are minutes remaining, reverse the logic and light up the LEDs
+    if(minutesLeft > 0){
+      minutesLeft = ((minutesLeftNum - minutesLeft) + 1);
+    }else{
+      // If no minutes are left, do not turn on any LEDs
+      minutesLeft = 0;
+    }
+  }
+
+  // iterate over each LED and turn them on according to the previous logic
   for(int led = 0; led < minutesLeftNum; led++){
     if(led < minutesLeft){
       digitalWrite(minutesLedsLeft[led], HIGH);
@@ -466,6 +484,11 @@ void setup() {
     for(int pin = 0; pin < registerPins; pin++){
       pinMode(registers[i][pin], OUTPUT);
     }
+  }
+
+  // Set all minutes LEDs pins as outputs
+  for(int pin = 0; pin < minutesLeftNum; pin++){
+    pinMode(minutesLedsLeft[pin], OUTPUT);
   }
 
   // If the RTC module was not found, then set the error variable to true
@@ -504,35 +527,37 @@ void loop() {
   minutes = now.minute();
 
   // Static assignments in hours and minutes variables for testing
-  //hours = 18;
-  //minutes = 55;
+  // hours = 1;
+  // minutes = 50;
 
   // If there has been a change in hours or minutes
   if((prevHours != hours) || (prevMinutes != minutes)){
-    
-	// If there has been a change in minutes such that the sentence on the matrix needs to be changed
-    if((prevMinutes / minPrecision) != (minutes / minPrecision)){
-	
-		// Convert the current time into a sentence, reset the matrix, split the string into several words,
-		// set the corresponding LEDs for the words to HIGH status and finally create the mapping for matrix rows
-        String currentTime = trimDoubleSpaces(convertTimeToString(hours, minutes));
-        setupLedMatrix();
-        totalWords = splitWords(currentTime, words);
-        searchAllWordsInMatrix(totalWords, words, wordPos);
-        createRowMapping();
+
+	  // If there has been a change in minutes such that the sentence on the matrix needs to be changed
+    if(((prevMinutes / minPrecision) != (minutes / minPrecision)) || (prevMinutes < 0)){
+
+      // Convert the current time into a sentence, reset the matrix, split the string into several words,
+      // set the corresponding LEDs for the words to HIGH status and finally create the mapping for matrix rows
+      String currentTime = trimDoubleSpaces(convertTimeToString(hours, minutes));
+      setupLedMatrix();
+      totalWords = splitWords(currentTime, words);
+      searchAllWordsInMatrix(totalWords, words, wordPos);
+      createRowMapping();
+
+      // If it is the first time the matrix is turned on, then manage the minutes LEDs
+      if(prevMinutes < 0){
+        refreshMinutesLeds(minutes % 5, minutes);
+      }
     }else{
-	      // Otherwise, update the LEDs indicating the minutes between intermediate times
-          minutesLeft = minutes % 5;
-          refreshMinutesLeds(minutesLeft);
+      // Otherwise, update the LEDs indicating the minutes between intermediate times
+      refreshMinutesLeds(minutes % 5, minutes);
     }
 	
-	// Update the variables containing the previous time with the current time
+	  // Update the variables containing the previous time with the current time
     prevHours = hours;
     prevMinutes = minutes;
   }
 
   // Turn on the LEDs with HIGH status with multiplexing
   refreshMatrix();
-
 }
-
