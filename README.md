@@ -24,7 +24,7 @@ There are also the connections to the RTC module and the four LEDs for the minut
      height="800">
 
 # Final Result
-<img src="https://github.com/AndreaFilippini/Qlocktwo-Italian/blob/main/Images/FinalResult.jpg"
+<img src="https://github.com/AndreaFilippini/Qlocktwo-Italian/blob/main/Images/Result.jpg"
      width="400"
      height="800">
 
