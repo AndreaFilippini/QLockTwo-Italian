@@ -204,14 +204,14 @@ int splitWords(String text, String result[]) {
 
   // iterate until no other words are found
   while (true) {
-	  // Get the next space index char and if exists,
-	  // extrat the current word as substring and put into the string array result
+    // Get the next space index char and if exists,
+    // extrat the current word as substring and put into the string array result
     int spaceIndex = text.indexOf(' ', start);
     if (spaceIndex == -1) {
       result[count++] = text.substring(start);
       break;
     }
-	  // extract the word from the past start index and the next space char
+    // extract the word from the past start index and the next space char
     result[count++] = text.substring(start, spaceIndex);
     start = spaceIndex + 1;
     if (count >= maxWordsChars) break;
@@ -242,9 +242,9 @@ Pos searchWordInMatrix(String text, Pos previousPos) {
         index--;
       }
 	  
-	    // If the word was found in the current row and is in a subsequent row
-	    // or is in the same row as the previous one but in a subsequent column,
-	    // then return the current word and set the corresponding LEDs as HIGH
+      // If the word was found in the current row and is in a subsequent row
+      // or is in the same row as the previous one but in a subsequent column,
+      // then return the current word and set the corresponding LEDs as HIGH
       if((index >= 0) && ((i > startRow) || ((i == startRow) && (index >= startCol)))){
           p.row = i;
           p.col = index;
@@ -405,14 +405,14 @@ void refreshMatrix() {
     // Get the corresponding row based on the mapping created previously
     activeRow = rowMapping[row];
 
-	  // Set the current output value to default value
+    // Set the current output value to default value
     outputPinsValue = 0;
 
-	  // Iterate over each column of the current row to construct the value to be sent to the shift registers
+    // Iterate over each column of the current row to construct the value to be sent to the shift registers
     for(int col = 0; col < matrixCols; col++){
 	
-	    // If the LED at the intersection of the current row and column is on,
-	    // then set the corresponding bit in the output value to 1
+      // If the LED at the intersection of the current row and column is on,
+      // then set the corresponding bit in the output value to 1
       if(matrixLeds[activeRow][col] == HIGH){
 	    // The first [11 bits] least significant bits drive the columns, while the most significant [10 bits] drive the rows
         outputPinsValue |= (1UL << (matrixCols + activeRow)) | (1UL << col);
@@ -514,7 +514,6 @@ void setup() {
 // Loop arduino standard function 
 // --------------------------------------------------------------
 void loop() {
-
   // If the RTC module was not found, then execute a default function
   if(error){
     testMatrix();
@@ -527,13 +526,13 @@ void loop() {
   minutes = now.minute();
 
   // Static assignments in hours and minutes variables for testing
-  // hours = 1;
-  // minutes = 50;
+  // hours = 18;
+  // minutes = 55;
 
   // If there has been a change in hours or minutes
   if((prevHours != hours) || (prevMinutes != minutes)){
 
-	  // If there has been a change in minutes such that the sentence on the matrix needs to be changed
+    // If there has been a change in minutes such that the sentence on the matrix needs to be changed
     if(((prevMinutes / minPrecision) != (minutes / minPrecision)) || (prevMinutes < 0)){
 
       // Convert the current time into a sentence, reset the matrix, split the string into several words,
@@ -543,17 +542,11 @@ void loop() {
       totalWords = splitWords(currentTime, words);
       searchAllWordsInMatrix(totalWords, words, wordPos);
       createRowMapping();
-
-      // If it is the first time the matrix is turned on, then manage the minutes LEDs
-      if(prevMinutes < 0){
-        refreshMinutesLeds(minutes % 5, minutes);
-      }
-    }else{
-      // Otherwise, update the LEDs indicating the minutes between intermediate times
-      refreshMinutesLeds(minutes % 5, minutes);
     }
+    // Update the LEDs indicating the minutes between intermediate times
+    refreshMinutesLeds(minutes % 5, minutes);
 	
-	  // Update the variables containing the previous time with the current time
+    // Update the variables containing the previous time with the current time
     prevHours = hours;
     prevMinutes = minutes;
   }
