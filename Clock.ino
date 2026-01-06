@@ -25,7 +25,7 @@ RTC_DS3231 rtc;
 #define matrixTestVal   250
 #define ledTestVal      1000
 
-// Constants to define the maximum sentence size, the matrix size, the total number of words,
+// Constants to define the maximum sentence size, the matrix size and the total number of words
 #define maxWordsChars   20
 #define matrixCols      11
 #define matrixRows      10
@@ -101,15 +101,6 @@ const int registers[registerNum][registerPins] = {
 // Pin used to control the LEDs to indicate the intermediate times between one time and the next
 const int minutesLedsLeft[minutesLeftNum] = {14, 15, 16, 17};
 
-// Indexes and arrays to identify and store used and unused rows, in order to alternate between turning on used/unused rows
-// and avoid the problem of ghosting during multiplexing for adjacent rows
-// RowMapping array will contain the order in which to light up the rows in order to avoid this problem
-// and will be refreshed every time the time changes, creating a new mapping.
-int usedRowIndex, unusedRowIndex;
-int usedRows[matrixRows];
-int unusedRows[matrixRows];
-int rowMapping[matrixRows];
-
 // DATA -----------------------------------------------------
 String words[maxWordsChars];
 char matrixLeds[matrixRows][matrixCols];
@@ -122,6 +113,15 @@ bool error = false;
 uint32_t outputPinsValue;
 byte singleRegisterValue;
 Pos wordPos[maxTotalWords];
+
+// Indexes and arrays to identify and store used and unused rows, in order to alternate between turning on used/unused rows
+// and avoid the problem of ghosting during multiplexing for adjacent rows
+// RowMapping array will contain the order in which to light up the rows in order to avoid this problem
+// and will be refreshed every time the time changes, creating a new mapping.
+int usedRowIndex, unusedRowIndex;
+int usedRows[matrixRows];
+int unusedRows[matrixRows];
+int rowMapping[matrixRows];
 
 // --------------------------------------------------------------
 // Convert time to textual string (Italian word clock style)
@@ -238,11 +238,11 @@ Pos searchWordInMatrix(String text, Pos previousPos) {
   for(int i = 0; i < matrixRows; i++){
       int index = String(matrixWords[i]).indexOf(text);
 
-	    // special case of È char (2 byte encoding), in this case shift the position of the index by 1
-	    if((i == 1) && (index != 0)){
+      // special case of È char (2 byte encoding), in this case shift the position of the index by 1
+      if((i == 1) && (index != 0)){
         index--;
       }
-	  
+      
       // If the word was found in the current row and is in a subsequent row
       // or is in the same row as the previous one but in a subsequent column,
       // then return the current word and set the corresponding LEDs as HIGH
@@ -251,11 +251,11 @@ Pos searchWordInMatrix(String text, Pos previousPos) {
           p.col = index;
           p.length = text.length();
 
-		      // special case of È char (2 byte encoding), in this set the length with a char less
-		      if((i == 1) && (index == 0)){
+         // special case of È char (2 byte encoding), in this set the length with a char less
+         if((i == 1) && (index == 0)){
             p.length--;
           }
-		  
+          
           setWordInLedMatrix(p, text);
           return p;
       }
@@ -411,16 +411,16 @@ void refreshMatrix() {
 
     // Iterate over each column of the current row to construct the value to be sent to the shift registers
     for(int col = 0; col < matrixCols; col++){
-	
+
       // If the LED at the intersection of the current row and column is on,
       // then set the corresponding bit in the output value to 1
       if(matrixLeds[activeRow][col] == HIGH){
-	    // The first [11 bits] least significant bits drive the columns, while the most significant [10 bits] drive the rows
+        // The first [11 bits] least significant bits drive the columns, while the most significant [10 bits] drive the rows
         outputPinsValue |= (1UL << (matrixCols + activeRow)) | (1UL << col);
       }
     }	
-	// Negate the bits that drive the matrix columns and send the final value to the shift registers
-	// the matrixColsMask is used to isolte the LSB of the coloumn bits
+    // Negate the bits that drive the matrix columns and send the final value to the shift registers
+    // the matrixColsMask is used to isolte the LSB of the coloumn bits
     outputPinsValue = ((outputPinsValue >> matrixCols) << matrixCols) | (matrixColsMask & ~outputPinsValue);
     setRegistersOutput(outputPinsValue);
     delayMicroseconds(matrixRefresh);
@@ -487,7 +487,7 @@ void refreshMinutesLeds(int minutesLeft, int minutes){
 void setup() {
   // Initialize serial communication
   Serial.begin(9600);
-  
+
   // Set the variables containing the previous time before the change with default values.
   prevHours = -1;
   prevMinutes = -1;
@@ -558,7 +558,7 @@ void loop() {
     }
     // Update the LEDs indicating the minutes between intermediate times
     refreshMinutesLeds(minutes % 5, minutes);
-	
+
     // Update the variables containing the previous time with the current time
     prevHours = hours;
     prevMinutes = minutes;
