@@ -4,7 +4,7 @@
 
 /*
 
-  QlockTwo v.1.1
+  QlockTwo v.1.2
    ____  _            _    _                 
   / __ \| |          | |  | |                
  | |  | | | ___   ___| | _| |___      _____  
@@ -20,9 +20,10 @@ RTC_DS3231 rtc;
 // Set to 1 if you want to set the internal time of the RTC module during code upload to Arduino
 #define setClockFlag    0
 
-// Constants for defining the LED lighting speed during normal operation and testing
-#define ledBrightness   1500
+// Constants for defining the LED lighting speed and intensity during normal operation and testing
+#define matrixRefresh   1500
 #define matrixTestVal   250
+#define ledTestVal      1000
 
 // Constants to define the maximum sentence size, the matrix size, the total number of words,
 #define maxWordsChars   20
@@ -422,7 +423,7 @@ void refreshMatrix() {
 	// the matrixColsMask is used to isolte the LSB of the coloumn bits
     outputPinsValue = ((outputPinsValue >> matrixCols) << matrixCols) | (matrixColsMask & ~outputPinsValue);
     setRegistersOutput(outputPinsValue);
-    delayMicroseconds(ledBrightness);
+    delayMicroseconds(matrixRefresh);
   }
 }
 
@@ -442,13 +443,25 @@ void testMatrix(){
 }
 
 // --------------------------------------------------------------
+// Test function to sequentially turn on all minutes LEDs
+// --------------------------------------------------------------
+void testMinutesLed(){
+  // iterate over each LED and turn them on first and then off
+  for(int led = 0; led < minutesLeftNum; led++){
+    digitalWrite(minutesLedsLeft[led], HIGH);
+    delay(ledTestVal);
+    digitalWrite(minutesLedsLeft[led], LOW);
+  }
+}
+
+// --------------------------------------------------------------
 // Function to turn on LEDs that indicate intermediate minutes
 // --------------------------------------------------------------
 void refreshMinutesLeds(int minutesLeft, int minutes){
   // Don't turn on any LEDs in the last 5 minutes
   if(minutes > 55){
     minutesLeft = 0;
-  }else if(minutes > 34){
+  }else if(minutes > 35){
     // If it is after half an hour and there are minutes remaining, reverse the logic and light up the LEDs
     if(minutesLeft > 0){
       minutesLeft = ((minutesLeftNum - minutesLeft) + 1);
