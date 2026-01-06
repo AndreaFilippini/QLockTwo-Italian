@@ -33,7 +33,7 @@ RTC_DS3231 rtc;
 
 // Bit mask to isolate the part of the columns' turn-on bits (0x7FF -> 0b11111111111)
 // Binary value with a number of 1 equal to the number of columns
-#define matrixColsMask  0x7FF
+#define matrixColsMask  ((1UL << matrixCols) - 1)
 
 // Constant to define the number of LEDs indicating the minutes remaining until the next time change
 // The clock has an accuracy of 5 minutes; the intermediate minutes are indicated by lighting these LEDs
