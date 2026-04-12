@@ -31,6 +31,10 @@ RTC_DS3231 rtc;
 #define matrixRows      10
 #define maxTotalWords   10
 
+// Constants to define months
+#define monthMarch      3
+#define monthOctober    10
+
 // Bit mask to isolate the part of the columns' turn-on bits (0x7FF -> 0b11111111111)
 // Binary value with a number of 1 equal to the number of columns
 #define matrixColsMask  ((1UL << matrixCols) - 1)
@@ -108,7 +112,7 @@ char matrixLeds[matrixRows][matrixCols];
 // Definition of global variables that will be used during code execution, including hours and minutes,
 // output to be sent to shift registers and the current time in words to be displayed on the matrix
 String currentTime;
-int hours, minutes, prevHours, prevMinutes, totalWords, activeRow;
+int hours, minutes, month, day, dayIndex, prevHours, prevMinutes, totalWords, activeRow;
 bool error = false;
 uint32_t outputPinsValue;
 byte singleRegisterValue;
@@ -482,6 +486,36 @@ void refreshMinutesLeds(int minutesLeft, int minutes){
 }
 
 // --------------------------------------------------------------
+// Function used to adjust the hour for daylight saving time
+// --------------------------------------------------------------
+bool isDaylightSavingTime(int month, int day, int dayIndex, int hours) {
+  // Check if current month is outside the months range between march and october
+  if (month < monthMarch || month > monthOctober) return false;
+  if (month > monthMarch && month < monthOctober) return true;
+
+  // Calculate last sunday of the month, getting at the beginning the first sunday of the month
+  int firstSunday = ((day - dayIndex) % 7);
+  // Get the number of sundays in the current month
+  int numberOfSundays = ((31 - firstSunday) / 7);
+  // Get the number last sunday of the month
+  int lastSunday = firstSunday + (numberOfSundays * 7);
+
+  // Check if current month is march
+  if (month == monthMarch) {
+    // Check if current day is after the start of daylight saving time
+    return (day > lastSunday || (day == lastSunday && hours >= 2));
+  }
+
+  // Check if current month is october
+  if (month == monthOctober) {
+    // Check if current day is before the end of daylight saving time
+    return !(day > lastSunday || (day == lastSunday && hours >= 3));
+  }
+
+  return false;
+}
+
+// --------------------------------------------------------------
 // Setup arduino standard function 
 // --------------------------------------------------------------
 void setup() {
@@ -514,12 +548,27 @@ void setup() {
   // then call the adjust function on the rtc object
   if(setClockFlag){
     DateTime compiledTime(F(__DATE__), F(__TIME__));
+
+    // Check if daylight saving time
+    bool daylightSavingTime = isDaylightSavingTime(compiledTime.month(),
+                                                   compiledTime.day(),
+                                                   compiledTime.dayOfTheWeek(),
+                                                   compiledTime.hour());
+
+    // Check if daylight saving time is active and in
+    // that case subtract one hour from the RTC time
+    if (daylightSavingTime) {
+      compiledTime = compiledTime - TimeSpan(0, 1, 0, 0);
+    }
+
     rtc.adjust(compiledTime);
     Serial.print("RTC time set as: ");
     Serial.print(compiledTime.hour());
     Serial.print(":");
     if (compiledTime.minute() < 10) Serial.print('0');
     Serial.println(compiledTime.minute());
+    Serial.print("Saving Time Day: ");
+    Serial.print(daylightSavingTime ? "true" : "false");
   }
 }
 
@@ -537,6 +586,14 @@ void loop() {
   DateTime now = rtc.now();
   hours = now.hour();
   minutes = now.minute();
+  month = now.month();
+  day = now.day();
+  dayIndex = now.dayOfTheWeek();
+
+  // Check if daylight saving time is active and in that case add one hour
+  if(isDaylightSavingTime(month, day, dayIndex, hours)){
+    hours = ((hours + 1) % 24);
+  }
 
   // Static assignments in hours and minutes variables for testing
   // hours = 18;
